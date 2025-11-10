@@ -364,3 +364,23 @@ header h1 {
 ::-webkit-scrollbar-thumb:hover {
     background: #555;
 }
+
+/* 自动刷新按钮激活状态 */
+.btn-secondary.active {
+    background: #4caf50;
+    color: white;
+}
+
+/* 新日志高亮动画 */
+.new-log {
+    animation: highlight 0.5s ease-out;
+}
+
+@keyframes highlight {
+    from {
+        background-color: #fff3cd;
+    }
+    to {
+        background-color: transparent;
+    }
+}

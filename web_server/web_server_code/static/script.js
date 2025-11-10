@@ -5,6 +5,11 @@ const API_BASE = '';
 let currentFile = null;
 let currentType = null;
 
+// 当前选中的文件
+let autoRefresh = false;  // 添加
+let refreshInterval = null;  // 添加
+let lastTimestamp = 0;  // 添加：最后一条日志的时间戳
+
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
     loadFiles();
@@ -33,6 +38,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('.close').addEventListener('click', () => {
         document.getElementById('statsModal').style.display = 'none';
     });
+
+    // 添加自动刷新按钮事件
+    const autoRefreshBtn = document.getElementById('autoRefreshBtn');
+    autoRefreshBtn.addEventListener('click', toggleAutoRefresh);
+
 });
 
 // 加载文件列表
@@ -117,6 +127,85 @@ async function loadLogs(fileName, fileType) {
     }
 }
 
+
+// 切换自动刷新
+function toggleAutoRefresh() {
+    autoRefresh = !autoRefresh;
+    const btn = document.getElementById('autoRefreshBtn');
+    
+    if (autoRefresh) {
+        btn.textContent = '⏸ 停止刷新';
+        btn.classList.add('active');
+        startAutoRefresh();
+    } else {
+        btn.textContent = '▶ 自动刷新';
+        btn.classList.remove('active');
+        stopAutoRefresh();
+    }
+}
+
+// 开始自动刷新
+function startAutoRefresh() {
+    if (!currentFile) {
+        alert('请先选择日志文件');
+        autoRefresh = false;
+        return;
+    }
+    
+    // 每2秒刷新一次
+    refreshInterval = setInterval(async () => {
+        await fetchNewLogs();
+    }, 2000);
+}
+
+// 停止自动刷新
+function stopAutoRefresh() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+    }
+}
+
+// 获取新日志
+async function fetchNewLogs() {
+    if (!currentFile) return;
+    
+    try {
+        const url = `${API_BASE}/api/logs/tail?file=${encodeURIComponent(currentFile)}&type=${currentType}&since=${lastTimestamp}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.success && data.logs.length > 0) {
+            appendLogs(data.logs);
+            // 更新最后时间戳
+            lastTimestamp = Math.max(...data.logs.map(log => log.timestamp_ms));
+        }
+    } catch (error) {
+        console.error('获取新日志失败:', error);
+    }
+}
+
+// 追加日志到表格
+function appendLogs(logs) {
+    const tbody = document.querySelector('.log-table tbody');
+    if (!tbody) return;
+    
+    logs.forEach(log => {
+        const row = document.createElement('tr');
+        row.innerHTML = renderLogRow(log).replace(/<\/?tr[^>]*>/g, '');
+        row.classList.add('new-log');  // 添加高亮类
+        tbody.appendChild(row);
+        
+        // 0.5秒后移除高亮
+        setTimeout(() => row.classList.remove('new-log'), 500);
+    });
+    
+    // 自动滚动到底部
+    const container = document.getElementById('logContent');
+    container.scrollTop = container.scrollHeight;
+}
+
+
 // 渲染文件信息
 function renderFileInfo(info) {
     const container = document.getElementById('fileInfo');
@@ -130,13 +219,18 @@ function renderFileInfo(info) {
 }
 
 // 渲染日志列表
+// 渲染日志列表
 function renderLogs(logs) {
     const container = document.getElementById('logContent');
     
     if (logs.length === 0) {
         container.innerHTML = '<div class="empty-state"><p>没有找到日志记录</p></div>';
+        lastTimestamp = 0;  // 添加
         return;
     }
+    
+    // 更新最后时间戳
+    lastTimestamp = Math.max(...logs.map(log => log.timestamp_ms));  // 添加
     
     container.innerHTML = `
         <table class="log-table">

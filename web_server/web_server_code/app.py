@@ -262,6 +262,11 @@ class IEC104FrameParser:
 def parse_log_line_json(line: str) -> Optional[Dict[str, Any]]:
     """解析JSON格式的日志行"""
     try:
+        # 去除首尾空白字符
+        line = line.strip()
+        if not line:
+            return None
+            
         log_data = json.loads(line)
         
         # 转换时间戳
@@ -285,8 +290,7 @@ def parse_log_line_json(line: str) -> Optional[Dict[str, Any]]:
             dir_desc = direction or '未知方向'
         
         # 解析IEC104帧
-        # 解析IEC104帧
-        data_hex = log_data.get('data', '').strip()  # 添加 .strip()
+        data_hex = log_data.get('data', '').strip()
         frame_info = IEC104FrameParser.parse(data_hex) if data_hex else {}
         
         return {
@@ -297,16 +301,18 @@ def parse_log_line_json(line: str) -> Optional[Dict[str, Any]]:
             'length': log_data.get('len', len(data_hex.split()) if data_hex else 0),
             'data': data_hex,
             'frame_info': frame_info,
-            'raw': line.strip()
+            'raw': line
         }
     
     except json.JSONDecodeError as e:
+        # 添加更详细的错误信息
         print(f"JSON解析错误: {e}")
+        print(f"错误位置: 第{e.lineno}行, 第{e.colno}列")
+        print(f"问题行内容: {line[:100]}...")  # 只显示前100个字符
         return None
     except Exception as e:
-        print(f"解析日志行失败: {e}")
+        print(f"解析日志行失败: {e}, 行内容: {line[:100]}")
         return None
-
 
 def parse_iec104_log_file(filepath: str, tail_lines: Optional[int] = None, 
                           filter_type: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -333,7 +339,8 @@ def parse_iec104_log_file(filepath: str, tail_lines: Optional[int] = None,
                 max_lines = config.MAX_LOG_LINES
                 lines = lines[-min(max_lines, len(lines)):]
             
-            for line_num, line in enumerate(lines, 1):
+            # 添加原始行号跟踪
+            for original_line_num, (line_num, line) in enumerate(enumerate(lines, 1), 1):
                 line = line.strip()
                 if not line:
                     continue
@@ -347,13 +354,16 @@ def parse_iec104_log_file(filepath: str, tail_lines: Optional[int] = None,
                             continue
                     
                     log_entry['line_num'] = line_num
+                    log_entry['file_line_num'] = original_line_num  # 添加文件中的实际行号
                     logs.append(log_entry)
+                else:
+                    # 记录解析失败的行号
+                    print(f"行 {original_line_num} 解析失败")
     
     except Exception as e:
         print(f"读取日志文件失败 {filepath}: {e}")
     
     return logs
-
 
 def get_log_files() -> Dict[str, List[Dict[str, Any]]]:
     """获取所有日志文件列表"""
@@ -622,6 +632,38 @@ def internal_error(error):
         'error': '服务器内部错误'
     }), 500
 
+
+@app.route('/api/logs/tail', methods=['GET'])
+def get_logs_tail():
+    """获取日志尾部（用于实时更新）"""
+    try:
+        filepath = request.args.get('file')
+        log_type = request.args.get('type', 'client')
+        since_ms = request.args.get('since', type=int, default=0)  # 获取此时间戳之后的日志
+        
+        if not filepath:
+            return jsonify({'success': False, 'error': '未指定文件'}), 400
+        
+        base_dir = config.CLIENT_LOGS_DIR if log_type == 'client' else config.SERVER_LOGS_DIR
+        full_path = validate_file_path(filepath, base_dir)
+        
+        if not full_path:
+            return jsonify({'success': False, 'error': '文件不存在'}), 404
+        
+        # 读取所有日志
+        logs = parse_iec104_log_file(full_path)
+        
+        # 只返回指定时间戳之后的日志
+        new_logs = [log for log in logs if log.get('timestamp_ms', 0) > since_ms]
+        
+        return jsonify({
+            'success': True,
+            'logs': new_logs,
+            'count': len(new_logs)
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     # 确保目录存在
