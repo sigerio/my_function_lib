@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IEC104 协议分析器</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <h1>⚡ IEC104 协议分析器</h1>
+                <span class="subtitle">实时通信日志分析与调试工具</span>
+            </div>
+            <div class="header-right">
+                <span id="currentTime"></span>
+                <button onclick="refreshFiles()" class="btn-refresh">🔄 刷新</button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- 左侧文件列表 -->
+            <div class="sidebar">
+                <div class="file-section">
+                    <h3>📁 客户端日志</h3>
+                    <div id="clientFiles" class="file-list"></div>
+                </div>
+                <div class="file-section">
+                    <h3>📁 服务端日志</h3>
+                    <div id="serverFiles" class="file-list"></div>
+                </div>
+            </div>
+
+            <!-- 右侧内容 -->
+            <div class="content">
+                <!-- 工具栏 -->
+                <div class="toolbar">
+                    <div class="current-file">
+                        <span id="currentFileName">请选择日志文件</span>
+                        <span id="fileInfo"></span>
+                    </div>
+                    <div class="controls">
+                        <input type="text" id="searchBox" placeholder="搜索..." onkeyup="filterLogs()">
+                        
+                        <select id="direction" onchange="filterLogs()">
+                            <option value="">所有方向</option>
+                            <option value="TX">TX (发送)</option>
+                            <option value="RX">RX (接收)</option>
+                        </select>
+                        
+                        <select id="frameType" onchange="filterLogs()">
+                            <option value="">所有帧类型</option>
+                            <option value="I">I帧 (信息)</option>
+                            <option value="S">S帧 (监视)</option>
+                            <option value="U">U帧 (控制)</option>
+                        </select>
+                        
+                        <select id="tailLines" onchange="loadCurrentFile()">
+                            <option value="100">最后100行</option>
+                            <option value="500">最后500行</option>
+                            <option value="1000">最后1000行</option>
+                            <option value="5000">最后5000行</option>
+                            <option value="">全部</option>
+                        </select>
+                        
+                        <label class="auto-refresh-label">
+                            <input type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()">
+                            自动刷新
+                        </label>
+                        
+                        <button onclick="exportLogs()" class="btn-export">📥 导出</button>
+                        <button onclick="clearDisplay()" class="btn-clear">清屏</button>
+                    </div>
+                </div>
+
+                <!-- 日志显示区域 -->
+                <div class="log-container" id="logContainer">
+                    <div class="welcome-message">
+                        <h2>欢迎使用 IEC104 协议分析器</h2>
+                        <p>专业的IEC 60870-5-104协议通信日志分析工具</p>
+                        <div class="features">
+                            <div class="feature">🔍 智能协议解析</div>
+                            <div class="feature">📊 帧类型识别</div>
+                            <div class="feature">🎯 实时数据分析</div>
+                            <div class="feature">💾 导出分析结果</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 状态栏 -->
+                <div class="status-bar">
+                    <span id="logCount">共 0 条日志</span>
+                    <span id="filterCount"></span>
+                    <span id="lastUpdate"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
