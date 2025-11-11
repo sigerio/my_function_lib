@@ -362,8 +362,72 @@ def parse_iec104_log_file(filepath: str, tail_lines: Optional[int] = None,
     
     except Exception as e:
         print(f"读取日志文件失败 {filepath}: {e}")
-    
+    # logs.sort(key=lambda x: x.get('timestamp_ms', 0), reverse=True)
     return logs
+
+def parse_iec104_log_file_incremental(filepath: str, last_position: int = 0) -> Dict[str, Any]:
+    """增量读取日志文件（只读取新增部分）"""
+    logs = []
+    new_position = last_position
+    
+    if not os.path.exists(filepath):
+        return {'logs': logs, 'position': 0, 'file_size': 0}
+    
+    try:
+        file_size = os.path.getsize(filepath)
+        
+        # 如果文件变小了（可能是新文件），从头读取
+        if file_size < last_position:
+            last_position = 0
+        
+        # 如果没有新内容
+        if file_size == last_position:
+            return {'logs': logs, 'position': last_position, 'file_size': file_size}
+        
+        with open(filepath, 'rb') as f:
+            # 移动到上次读取的位置
+            f.seek(last_position)
+            
+            # 读取新增内容
+            new_content = f.read()
+            new_position = f.tell()
+            
+            try:
+                text = new_content.decode(config.LOG_ENCODING)
+            except UnicodeDecodeError:
+                text = new_content.decode(config.LOG_ENCODING, errors='ignore')
+            
+            lines = text.splitlines()
+            
+            # 如果第一行不完整（上次读取可能截断），跳过
+            if last_position > 0 and len(lines) > 0:
+                # 检查第一行是否完整
+                first_line = lines[0].strip()
+                if not (first_line.startswith('{') and first_line.endswith('}')):
+                    lines = lines[1:]  # 跳过第一行
+            
+            # 解析每一行
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                
+                log_entry = parse_log_line_json(line)
+                if log_entry:
+                    logs.append(log_entry)
+        
+        # 按时间戳倒序排列
+        # logs.sort(key=lambda x: x.get('timestamp_ms', 0), reverse=True)
+        
+        return {
+            'logs': logs,
+            'position': new_position,
+            'file_size': file_size
+        }
+    
+    except Exception as e:
+        print(f"增量读取日志文件失败 {filepath}: {e}")
+        return {'logs': [], 'position': last_position, 'file_size': 0}
 
 def get_log_files() -> Dict[str, List[Dict[str, Any]]]:
     """获取所有日志文件列表"""
@@ -449,6 +513,9 @@ def index():
 def send_static(path):
     """静态文件"""
     static_dir = os.path.join(os.path.dirname(__file__), 'static')
+    print(f"请求静态文件: {path}")  # 添加
+    print(f"静态文件目录: {static_dir}")  # 添加
+    print(f"文件是否存在: {os.path.exists(os.path.join(static_dir, path))}")  # 添加
     return send_from_directory(static_dir, path)
 
 
@@ -635,11 +702,12 @@ def internal_error(error):
 
 @app.route('/api/logs/tail', methods=['GET'])
 def get_logs_tail():
-    """获取日志尾部（用于实时更新）"""
+    """获取日志尾部（用于实时更新）- 增量读取版本"""
     try:
         filepath = request.args.get('file')
         log_type = request.args.get('type', 'client')
-        since_ms = request.args.get('since', type=int, default=0)  # 获取此时间戳之后的日志
+        since_ms = request.args.get('since', type=int, default=0)
+        last_position = request.args.get('position', type=int, default=0)  # 添加：上次读取位置
         
         if not filepath:
             return jsonify({'success': False, 'error': '未指定文件'}), 400
@@ -650,20 +718,30 @@ def get_logs_tail():
         if not full_path:
             return jsonify({'success': False, 'error': '文件不存在'}), 404
         
-        # 读取所有日志
-        logs = parse_iec104_log_file(full_path)
+        # 使用增量读取
+        result = parse_iec104_log_file_incremental(full_path, last_position)
         
-        # 只返回指定时间戳之后的日志
-        new_logs = [log for log in logs if log.get('timestamp_ms', 0) > since_ms]
+        # 按时间戳过滤（双重保险）
+        new_logs = [log for log in result['logs'] if log.get('timestamp_ms', 0) > since_ms]
         
         return jsonify({
             'success': True,
             'logs': new_logs,
-            'count': len(new_logs)
+            'count': len(new_logs),
+            'position': result['position'],  # 返回新的读取位置
+            'file_size': result['file_size']
         })
     
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': True,
+            'logs': [],
+            'count': 0,
+            'position': last_position,  # 保持原位置
+            'error': str(e)
+        }), 200
 
 if __name__ == '__main__':
     # 确保目录存在

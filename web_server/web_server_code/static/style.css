@@ -384,3 +384,99 @@ header h1 {
         background-color: transparent;
     }
 }
+
+/* 悬停区域包装 */
+.scroll-top-wrapper {
+    position: fixed;
+    bottom: 20px;
+    right: 0;
+    width: 100px;  /* 悬停触发区域 */
+    height: 70px;
+    z-index: 1000;
+    pointer-events: none;  /* 默认不捕获事件 */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.scroll-top-wrapper.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;  /* 显示时可以交互 */
+}
+
+/* 按钮本身 */
+.scroll-top-btn {
+    position: absolute;
+    bottom: 10px;
+    right: -40px;  /* 默认隐藏，只露出一点 */
+    width: 50px;
+    height: 50px;
+    padding: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    font-size: 24px;
+    line-height: 50px;
+    text-align: center;
+    
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.2s ease,
+                box-shadow 0.3s ease;
+}
+
+/* 鼠标移到右侧区域时，按钮滑出 */
+.scroll-top-wrapper:hover .scroll-top-btn,
+.scroll-top-btn:hover {
+    right: 5px;
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.scroll-top-btn:active {
+    transform: scale(1);
+}
+
+
+/* 刷新状态指示器 - 始终占位，只改变可见性 */
+.refresh-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-left: 8px;
+    background-color: transparent;  /* 默认透明 */
+    transition: background-color 0.3s;
+    vertical-align: middle;
+}
+
+.refresh-indicator.active {
+    background-color: #4caf50;  /* 绿色 - 有新数据 */
+}
+
+.refresh-indicator.idle {
+    background-color: #999;  /* 灰色 - 无新数据 */
+}
+
+.refresh-indicator.loading {
+    background-color: #ffeb3b;  /* 黄色 - 正在请求 */
+    animation: pulse 0.8s infinite;
+}
+
+.refresh-indicator.error {
+    background-color: #f44336;  /* 红色 - 出错 */
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.2);
+    }
+}

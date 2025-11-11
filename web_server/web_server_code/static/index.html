@@ -1,17 +1,21 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IEC104 日志查看器 V-1.0.0 </title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
     <div class="container">
         <header>
             <h1>📊 IEC104 协议日志查看器</h1>
             <div class="header-actions">
-                <button id="autoRefreshBtn" class="btn btn-secondary">▶ 自动刷新</button>  <!-- 添加 -->
+                <button id="autoRefreshBtn" class="btn btn-secondary">
+                    ▶ 自动刷新<span id="refreshStatus" class="refresh-indicator"></span>
+                </button>
                 <button id="refreshBtn" class="btn btn-primary">🔄 刷新</button>
                 <button id="statsBtn" class="btn btn-secondary">📈 统计</button>
             </div>
@@ -21,12 +25,12 @@
             <!-- 文件列表侧边栏 -->
             <aside class="sidebar">
                 <h3>日志文件</h3>
-                
+
                 <div class="file-section">
                     <h4>客户端日志</h4>
                     <div id="clientFiles" class="file-list"></div>
                 </div>
-                
+
                 <div class="file-section">
                     <h4>服务端日志</h4>
                     <div id="serverFiles" class="file-list"></div>
@@ -45,7 +49,7 @@
                             <option value="">全部</option>
                         </select>
                     </div>
-                    
+
                     <div class="control-group">
                         <label>帧类型:</label>
                         <select id="frameFilter">
@@ -55,7 +59,7 @@
                             <option value="U">U帧</option>
                         </select>
                     </div>
-                    
+
                     <div class="control-group">
                         <label>搜索:</label>
                         <input type="text" id="searchInput" placeholder="搜索内容...">
@@ -63,11 +67,15 @@
                 </div>
 
                 <div id="fileInfo" class="file-info"></div>
-                
+
                 <div id="logContent" class="log-content">
                     <div class="empty-state">
                         <p>👈 请从左侧选择日志文件</p>
                     </div>
+                </div>
+                <!-- 修改按钮包装 -->
+                <div class="scroll-top-wrapper">
+                    <button id="scrollTopBtn" class="scroll-top-btn" title="回到顶部">↑</button>
                 </div>
             </main>
         </div>
@@ -84,4 +92,5 @@
 
     <script src="/static/script.js"></script>
 </body>
+
 </html>
