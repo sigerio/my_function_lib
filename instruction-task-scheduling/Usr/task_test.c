@@ -110,7 +110,7 @@ uint8_t task_id_run_fsm(uint16_t task_id)
     case TASK_ID_TIME:
         if(1)
         {
-            run_state = TASK_ID_FEEDBACK; //TODO
+            run_state = TASK_ID_FEEDBACK; //待处理
             break;
         } 
         task_id_manage.time_cnt = cur_run_task_id.time();
@@ -213,7 +213,7 @@ uint8_t task_node_execute(void)
 
 bool task_node_abnormal(void)
 {
-    printf("abnormal node  %d\n",task_pool_manage.abnormal_id);
+    printf("异常节点 %d\n",task_pool_manage.abnormal_id);
     return true;
 }
 
@@ -239,5 +239,4 @@ void task_pool_fsm(void)
 
     task_pool_manage.task_pool_run_state = run_state;
 }
-
 
